@@ -19,6 +19,9 @@
 *.tar.gz
 *.rar
 
+# Bash Script Files
+*.sh
+
 # Virtual machine crash logs
 hs_err_pid*
 replay_pid*
@@ -117,3 +120,4 @@ dist/
 
 # Test output
 test-output/
+src-javax-backup/
