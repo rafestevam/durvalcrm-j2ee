@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jboss-web xmlns="http://www.jboss.com/xml/ns/javaee"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.jboss.com/xml/ns/javaee
+                               http://www.jboss.org/j2ee/schema/jboss-web_14_0.xsd"
+           version="14.0">
+
+    <!-- Context Root - URL path for the application -->
+    <context-root>/durvalcrm</context-root>
+
+    <!-- Virtual Host (if needed) -->
+    <!-- <virtual-host>default-host</virtual-host> -->
+
+    <!-- Security Domain Configuration -->
+    <!-- Since user requested no security restrictions, no security domain is configured -->
+    
+    <!-- Data Source References -->
+    <resource-ref>
+        <res-ref-name>jdbc/DurvalCRMDS</res-ref-name>
+        <jndi-name>java:jboss/datasources/DurvalCRMDS</jndi-name>
+    </resource-ref>
+
+    <!-- Class Loading Configuration -->
+    <!-- <class-loading> removed - not supported in WildFly 37 -->
+
+    <!-- Enable Cross Context (if needed for other applications) -->
+    <!-- <enable-websockets>true</enable-websockets> -->
+
+    <!-- Valve Configuration (for custom processing) -->
+    <!-- 
+    <valve>
+        <class-name>org.apache.catalina.valves.RemoteIpValve</class-name>
+    </valve>
+    -->
+
+</jboss-web>

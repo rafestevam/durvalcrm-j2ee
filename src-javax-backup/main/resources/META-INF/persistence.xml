@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence
+                                 http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+             version="2.0">
+
+    <persistence-unit name="durvalcrm-pu" transaction-type="JTA">
+        <description>DurvalCRM Persistence Unit</description>
+        
+        <!-- JTA Data Source (configured in WildFly) -->
+        <jta-data-source>java:jboss/datasources/DurvalCRMDS</jta-data-source>
+        
+        <!-- Entity Classes -->
+        <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.AssociadoEntity</class>
+        <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.MensalidadeEntity</class>
+        <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.DoacaoEntity</class>
+        <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.VendaEntity</class>
+        
+        <!-- Don't scan for additional classes -->
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+        
+        <properties>
+            <!-- Hibernate Configuration -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.use_sql_comments" value="false"/>
+            
+            <!-- Connection Pool Settings -->
+            <property name="hibernate.connection.pool_size" value="10"/>
+            
+            <!-- Second Level Cache (optional) -->
+            <property name="hibernate.cache.use_second_level_cache" value="false"/>
+            <property name="hibernate.cache.use_query_cache" value="false"/>
+            
+            <!-- JDBC Settings -->
+            <property name="hibernate.jdbc.batch_size" value="20"/>
+            <property name="hibernate.jdbc.fetch_size" value="50"/>
+            
+            <!-- Statistics (for development/monitoring) -->
+            <property name="hibernate.generate_statistics" value="false"/>
+            
+            <!-- Schema Validation -->
+            <property name="hibernate.id.new_generator_mappings" value="true"/>
+            
+            <!-- Logging Configuration -->
+            <property name="hibernate.logging.level" value="WARN"/>
+        </properties>
+    </persistence-unit>
+
+</persistence>
