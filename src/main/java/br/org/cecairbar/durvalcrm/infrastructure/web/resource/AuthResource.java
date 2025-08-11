@@ -22,6 +22,7 @@ import java.security.cert.X509Certificate;
 import java.security.SecureRandom;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.annotation.Resource;
 
 @ApplicationScoped
 @Path("/auth")
@@ -29,12 +30,19 @@ import jakarta.enterprise.context.ApplicationScoped;
 @Consumes(MediaType.APPLICATION_JSON)
 public class AuthResource {
 
-    // Note: Configuration properties would need to be injected differently in J2EE
-    // These would typically come from @Resource or other J2EE configuration mechanisms
-    private String authServerUrl = "https://durvalcrm.org/admin/realms/durval-crm";
-    private String publicKeycloakUrl = "https://durvalcrm.org/admin";
-    private String internalKeycloakUrl = "https://20.127.155.169:9443";
-    private String clientId = "durvalcrm-app";
+    @Resource(lookup = "java:global/durvalcrm/keycloak/public-url")
+    private String publicKeycloakUrl;
+    
+    @Resource(lookup = "java:global/durvalcrm/keycloak/internal-url")
+    private String internalKeycloakUrl;
+    
+    @Resource(lookup = "java:global/durvalcrm/keycloak/client-id")
+    private String clientId;
+    
+    private String getAuthServerUrl() {
+        return publicKeycloakUrl + "/realms/durval-crm";
+    }
+    
 
     // Note: JWT handling would need different implementation in J2EE
     // This is just a placeholder - actual implementation would depend on your J2EE JWT library
@@ -87,17 +95,15 @@ public class AuthResource {
     @GET
     @Path("/login-info")
     public Map<String, Object> getLoginInfo() {
-        String publicAuthServerUrl = publicKeycloakUrl.endsWith("/") ? 
-            publicKeycloakUrl + "realms/durval-crm" : 
-            publicKeycloakUrl + "/realms/durval-crm";
+        String authServerUrl = getAuthServerUrl();
             
-        System.out.printf("Retornando informações de login - publicAuthServerUrl: %s, clientId: %s%n", publicAuthServerUrl, clientId);
+        System.out.printf("Retornando informações de login - authServerUrl: %s, clientId: %s%n", authServerUrl, clientId);
         
         Map<String, Object> response = new HashMap<>();
-        response.put("authServerUrl", publicAuthServerUrl);
+        response.put("authServerUrl", authServerUrl);
         response.put("clientId", clientId);
-        response.put("realm", extractRealmFromUrl(publicAuthServerUrl));
-        response.put("loginUrl", buildLoginUrl(publicAuthServerUrl));
+        response.put("realm", extractRealmFromUrl(authServerUrl));
+        response.put("loginUrl", buildLoginUrl(authServerUrl));
         response.put("isPublicClient", true); // Indicador de que é cliente público
         
         return response;
@@ -210,6 +216,7 @@ public class AuthResource {
     @GET
     @Path("/logout")
     public Map<String, Object> logout() {
+        String authServerUrl = getAuthServerUrl();
         String logoutUrl = authServerUrl + "/protocol/openid-connect/logout" +
                 "?client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8) +
                 "&post_logout_redirect_uri=" + URLEncoder.encode("http://localhost:3000", StandardCharsets.UTF_8);

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# WildFly CLI script to configure PostgreSQL datasource for DurvalCRM
+# Run with: $JBOSS_HOME/bin/jboss-cli.sh --connect --controller=127.0.0.1:9991 --file=configure-datasource.cli
+
+# Remove existing datasource if it exists (ignore errors)
+/subsystem=datasources/data-source=DurvalCRMDS:remove
+
+# Add PostgreSQL JDBC driver module if not exists
+/subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql,driver-module-name=org.postgresql,driver-class-name=org.postgresql.Driver)
+
+# Create the datasource
+/subsystem=datasources/data-source=DurvalCRMDS:add(jndi-name=java:jboss/datasources/DurvalCRMDS,driver-name=postgresql,connection-url=jdbc:postgresql://localhost:5432/durvalcrm_db,user-name=durvalcrm,password=durvalcrm@123,min-pool-size=5,max-pool-size=20,blocking-timeout-wait-millis=5000,idle-timeout-minutes=15,query-timeout=300)
+
+# Test the connection
+/subsystem=datasources/data-source=DurvalCRMDS:test-connection-in-pool
+
+# Reload server configuration
+:reload

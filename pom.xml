@@ -58,7 +58,7 @@
         
         <!-- Hibernate Core for annotations -->
         <dependency>
-            <groupId>org.hibernate</groupId>
+            <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
             <version>${hibernate.version}</version>
             <scope>provided</scope>
@@ -168,13 +168,11 @@
                 <artifactId>wildfly-maven-plugin</artifactId>
                 <version>4.2.0.Final</version>
                 <configuration>
-                    <hostname>20.127.155.169</hostname>
-                    <port>9990</port>
+                    <hostname>${wildfly.hostname}</hostname>
+                    <port>${wildfly.port}</port>
                     <protocol>remote+http</protocol>
-                    <username>admin</username>
-                    <password>wildfly@2025</password>
-                    <!-- Skip SSL certificate validation for self-signed certificates -->
-                    <skip-ssl-validation>true</skip-ssl-validation>
+                    <username>${wildfly.username}</username>
+                    <password>${wildfly.password}</password>
                     <timeout>60000</timeout>
                     <filename>${project.build.finalName}.war</filename>
                     <force>true</force>
@@ -208,20 +206,40 @@
     <profiles>
         <!-- Development Profile -->
         <profile>
-            <id>dev</id>
+            <id>development</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
                 <maven.test.skip>false</maven.test.skip>
+                <wildfly.hostname>127.0.0.1</wildfly.hostname>
+                <wildfly.port>9991</wildfly.port>
+                <wildfly.username>admin</wildfly.username>
+                <wildfly.password>admin123</wildfly.password>
+            </properties>
+        </profile>
+        
+        <!-- Staging Profile -->
+        <profile>
+            <id>staging</id>
+            <properties>
+                <maven.test.skip>true</maven.test.skip>
+                <wildfly.hostname>staging.durvalcrm.org</wildfly.hostname>
+                <wildfly.port>9990</wildfly.port>
+                <wildfly.username>admin</wildfly.username>
+                <wildfly.password>admin123</wildfly.password>
             </properties>
         </profile>
         
         <!-- Production Profile -->
         <profile>
-            <id>prod</id>
+            <id>production</id>
             <properties>
                 <maven.test.skip>true</maven.test.skip>
+                <wildfly.hostname>cecairbar.org.br</wildfly.hostname>
+                <wildfly.port>9990</wildfly.port>
+                <wildfly.username>admin</wildfly.username>
+                <wildfly.password>admin123</wildfly.password>
             </properties>
         </profile>
     </profiles>

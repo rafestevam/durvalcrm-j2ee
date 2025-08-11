@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://java.sun.com/xml/ns/javaee"
+<beans xmlns="https://jakarta.ee/xml/ns/jakartaee"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
-                           http://java.sun.com/xml/ns/javaee/beans_1_1.xsd"
-       version="1.1" bean-discovery-mode="all">
+       xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                           https://jakarta.ee/xml/ns/jakartaee/beans_4_0.xsd"
+       bean-discovery-mode="all">
 
     <!-- CDI Discovery Mode: 'all' enables CDI for all classes in the archive -->
     <!-- Alternative modes: 'annotated' (only classes with CDI annotations), 'none' (disable CDI) -->
