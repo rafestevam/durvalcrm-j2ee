@@ -22,21 +22,20 @@
         <!-- 
         Usage Examples:
         - Development: mvn clean package wildfly:deploy
-        - Staging: mvn clean package wildfly:deploy -Pstaging
+        - Staging: mvn clean package deploy -Pstaging
         - Production: mvn clean package wildfly:deploy -Pproduction
         
         Staging Environment:
         - Console: https://localhost:9443/wildfly/ (admin/admin123)
-        - Application will be available at: https://localhost:9443/crm/durvalcrm/
-        - Management Interface: localhost:9990 (via SSH tunnel)
+        - Application will be available at: https://localhost:9443/api/
+        - Backend API: https://localhost:9443/api/v1/...
         
         Testing Deployment:
         1. Start Vagrant VM: vagrant up (in deployment/environments/staging/Vagrant/)
-        2. Create SSH tunnel: ssh -L 9990:localhost:9990 vagrant@localhost -p 2222
-        3. Deploy: mvn clean package wildfly:deploy -Pstaging
-        4. Access: https://localhost:9443/crm/durvalcrm/
+        2. Deploy: mvn clean package deploy -Pstaging
+        3. Access API: https://localhost:9443/api/
         
-        Note: SSH tunnel required since VM only exposes port 9443 externally
+        Note: Staging uses SSH + WildFly CLI for deployment respecting HTTPS-only architecture
         -->
         
         <!-- Jakarta EE versions for WildFly 37 -->
@@ -200,6 +199,19 @@
                 </configuration>
             </plugin>
             
+            <!-- Maven Exec Plugin for SSH-based deployment to staging -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <executable>echo</executable>
+                    <arguments>
+                        <argument>WildFly CLI deployment not configured for this profile</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+            
             <!-- Maven Surefire Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -250,17 +262,33 @@
                 <maven.test.skip>true</maven.test.skip>
                 <!-- Alternative: Use SSH tunnel to access WildFly management directly -->
                 <wildfly.hostname>localhost</wildfly.hostname>
-                <wildfly.port>9990</wildfly.port>
-                <wildfly.protocol>remote+http</wildfly.protocol>
+                <wildfly.port>9443</wildfly.port>
+                <wildfly.protocol>remote+https</wildfly.protocol>
                 <wildfly.username>admin</wildfly.username>
                 <wildfly.password>admin123</wildfly.password>
                 <!-- Additional staging-specific properties -->
                 <wildfly.deployment.name>durvalcrm.war</wildfly.deployment.name>
                 <wildfly.context.root>/durvalcrm</wildfly.context.root>
-                <!-- Note: Requires SSH tunnel: ssh -L 9990:localhost:9990 vagrant@localhost -p 2222 -->
+                <wildfly.managementUrl>https://localhost:9443/management/</wildfly.managementUrl>
+                
+                <!-- SSH connection properties for staging deployment -->
+                <staging.ssh.host>127.0.0.1</staging.ssh.host>
+                <staging.ssh.port>2222</staging.ssh.port>
+                <staging.ssh.user>vagrant</staging.ssh.user>
+                <staging.ssh.key>/Users/rafaeldeoliveira/projects/DurvalCRM/durvalcrm-deployment/environments/staging/Vagrant/.vagrant/machines/default/vmware_desktop/private_key</staging.ssh.key>
             </properties>
             <build>
                 <plugins>
+                    <!-- Skip default deployment to repository -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-deploy-plugin</artifactId>
+                        <version>3.1.2</version>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    
                     <plugin>
                         <groupId>org.wildfly.plugins</groupId>
                         <artifactId>wildfly-maven-plugin</artifactId>
@@ -270,6 +298,7 @@
                             <protocol>${wildfly.protocol}</protocol>
                             <username>${wildfly.username}</username>
                             <password>${wildfly.password}</password>
+                            <managementUrl>${wildfly.managementUrl}</managementUrl>
                             <timeout>180000</timeout>
                             <filename>${project.build.finalName}.war</filename>
                             <force>true</force>
@@ -277,7 +306,29 @@
                             <checkPackaging>false</checkPackaging>
                             <!-- Runtime name for the deployment -->
                             <name>${project.build.finalName}.war</name>
+
                         </configuration>
+                    </plugin>
+                    
+                    <!-- SSH-based deployment using shell script -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>deploy-to-staging</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>${project.basedir}/deploy-staging.sh</executable>
+                                    <arguments>
+                                        <argument>${project.build.directory}/${project.build.finalName}.war</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
