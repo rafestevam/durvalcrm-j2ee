@@ -170,7 +170,7 @@
                 <configuration>
                     <hostname>${wildfly.hostname}</hostname>
                     <port>${wildfly.port}</port>
-                    <protocol>remote+http</protocol>
+                    <protocol>${wildfly.protocol}</protocol>
                     <username>${wildfly.username}</username>
                     <password>${wildfly.password}</password>
                     <timeout>60000</timeout>
@@ -214,6 +214,7 @@
                 <maven.test.skip>false</maven.test.skip>
                 <wildfly.hostname>127.0.0.1</wildfly.hostname>
                 <wildfly.port>9991</wildfly.port>
+                <wildfly.protocol>remote+http</wildfly.protocol>
                 <wildfly.username>admin</wildfly.username>
                 <wildfly.password>admin123</wildfly.password>
             </properties>
@@ -225,7 +226,8 @@
             <properties>
                 <maven.test.skip>true</maven.test.skip>
                 <wildfly.hostname>staging.durvalcrm.org</wildfly.hostname>
-                <wildfly.port>9990</wildfly.port>
+                <wildfly.port>9993</wildfly.port>
+                <wildfly.protocol>https-remoting</wildfly.protocol>
                 <wildfly.username>admin</wildfly.username>
                 <wildfly.password>admin123</wildfly.password>
             </properties>
@@ -238,6 +240,7 @@
                 <maven.test.skip>true</maven.test.skip>
                 <wildfly.hostname>cecairbar.org.br</wildfly.hostname>
                 <wildfly.port>9990</wildfly.port>
+                <wildfly.protocol>remote+http</wildfly.protocol>
                 <wildfly.username>admin</wildfly.username>
                 <wildfly.password>admin123</wildfly.password>
             </properties>
