@@ -18,6 +18,27 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         
+        <!-- Deployment Configuration -->
+        <!-- 
+        Usage Examples:
+        - Development: mvn clean package wildfly:deploy
+        - Staging: mvn clean package wildfly:deploy -Pstaging
+        - Production: mvn clean package wildfly:deploy -Pproduction
+        
+        Staging Environment:
+        - Console: https://localhost:9443/wildfly/ (admin/admin123)
+        - Application will be available at: https://localhost:9443/crm/durvalcrm/
+        - Management Interface: localhost:9990 (via SSH tunnel)
+        
+        Testing Deployment:
+        1. Start Vagrant VM: vagrant up (in deployment/environments/staging/Vagrant/)
+        2. Create SSH tunnel: ssh -L 9990:localhost:9990 vagrant@localhost -p 2222
+        3. Deploy: mvn clean package wildfly:deploy -Pstaging
+        4. Access: https://localhost:9443/crm/durvalcrm/
+        
+        Note: SSH tunnel required since VM only exposes port 9443 externally
+        -->
+        
         <!-- Jakarta EE versions for WildFly 37 -->
         <hibernate.version>6.2.13.Final</hibernate.version>
         <postgresql.version>42.7.3</postgresql.version>
@@ -221,16 +242,45 @@
         </profile>
         
         <!-- Staging Profile -->
+        <!-- Deploy to WildFly via SSH tunnel since only port 9443 is exposed from VM -->
+        <!-- SSH tunnel required: ssh -L 9990:localhost:9990 vagrant@localhost -p 2222 -->
         <profile>
             <id>staging</id>
             <properties>
                 <maven.test.skip>true</maven.test.skip>
-                <wildfly.hostname>staging.durvalcrm.org</wildfly.hostname>
-                <wildfly.port>9993</wildfly.port>
-                <wildfly.protocol>https-remoting</wildfly.protocol>
+                <!-- Alternative: Use SSH tunnel to access WildFly management directly -->
+                <wildfly.hostname>localhost</wildfly.hostname>
+                <wildfly.port>9990</wildfly.port>
+                <wildfly.protocol>remote+http</wildfly.protocol>
                 <wildfly.username>admin</wildfly.username>
                 <wildfly.password>admin123</wildfly.password>
+                <!-- Additional staging-specific properties -->
+                <wildfly.deployment.name>durvalcrm.war</wildfly.deployment.name>
+                <wildfly.context.root>/durvalcrm</wildfly.context.root>
+                <!-- Note: Requires SSH tunnel: ssh -L 9990:localhost:9990 vagrant@localhost -p 2222 -->
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <configuration>
+                            <hostname>${wildfly.hostname}</hostname>
+                            <port>${wildfly.port}</port>
+                            <protocol>${wildfly.protocol}</protocol>
+                            <username>${wildfly.username}</username>
+                            <password>${wildfly.password}</password>
+                            <timeout>180000</timeout>
+                            <filename>${project.build.finalName}.war</filename>
+                            <force>true</force>
+                            <!-- Add staging-specific deployment options -->
+                            <checkPackaging>false</checkPackaging>
+                            <!-- Runtime name for the deployment -->
+                            <name>${project.build.finalName}.war</name>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         
         <!-- Production Profile -->
