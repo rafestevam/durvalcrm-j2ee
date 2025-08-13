@@ -339,12 +339,77 @@
             <id>production</id>
             <properties>
                 <maven.test.skip>true</maven.test.skip>
-                <wildfly.hostname>cecairbar.org.br</wildfly.hostname>
-                <wildfly.port>9990</wildfly.port>
-                <wildfly.protocol>remote+http</wildfly.protocol>
+                <!-- Production configuration for durvalcrm.org domain with HTTPS on port 9443 -->
+                <wildfly.hostname>durvalcrm.org</wildfly.hostname>
+                <wildfly.port>9443</wildfly.port>
+                <wildfly.protocol>remote+https</wildfly.protocol>
                 <wildfly.username>admin</wildfly.username>
                 <wildfly.password>admin123</wildfly.password>
+                <!-- Additional production-specific properties -->
+                <wildfly.deployment.name>durvalcrm.war</wildfly.deployment.name>
+                <wildfly.context.root>/durvalcrm</wildfly.context.root>
+                <wildfly.managementUrl>https://durvalcrm.org:9443/management/</wildfly.managementUrl>
+                
+                <!-- SSH connection properties for production deployment -->
+                <production.ssh.host>durvalcrm.org</production.ssh.host>
+                <production.ssh.port>22</production.ssh.port>
+                <production.ssh.user>root</production.ssh.user>
+                <!-- SSH key path should be configured externally or use SSH agent -->
             </properties>
+            <build>
+                <plugins>
+                    <!-- Skip default deployment to repository -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-deploy-plugin</artifactId>
+                        <version>3.1.2</version>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <configuration>
+                            <hostname>${wildfly.hostname}</hostname>
+                            <port>${wildfly.port}</port>
+                            <protocol>${wildfly.protocol}</protocol>
+                            <username>${wildfly.username}</username>
+                            <password>${wildfly.password}</password>
+                            <managementUrl>${wildfly.managementUrl}</managementUrl>
+                            <timeout>180000</timeout>
+                            <filename>${project.build.finalName}.war</filename>
+                            <force>true</force>
+                            <!-- Add production-specific deployment options -->
+                            <checkPackaging>false</checkPackaging>
+                            <!-- Runtime name for the deployment -->
+                            <name>${project.build.finalName}.war</name>
+                        </configuration>
+                    </plugin>
+                    
+                    <!-- SSH-based deployment using shell script -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>deploy-to-production</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>${project.basedir}/deploy-production.sh</executable>
+                                    <arguments>
+                                        <argument>${project.build.directory}/${project.build.finalName}.war</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>
