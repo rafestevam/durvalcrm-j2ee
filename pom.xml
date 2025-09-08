@@ -340,18 +340,18 @@
             <properties>
                 <maven.test.skip>true</maven.test.skip>
                 <!-- Production configuration for durvalcrm.org domain with HTTPS on port 9443 -->
-                <wildfly.hostname>durvalcrm.org</wildfly.hostname>
-                <wildfly.port>9443</wildfly.port>
+                <wildfly.hostname>72.60.12.121</wildfly.hostname>
+                <wildfly.port>443</wildfly.port>
                 <wildfly.protocol>remote+https</wildfly.protocol>
                 <wildfly.username>admin</wildfly.username>
                 <wildfly.password>admin123</wildfly.password>
                 <!-- Additional production-specific properties -->
                 <wildfly.deployment.name>durvalcrm.war</wildfly.deployment.name>
                 <wildfly.context.root>/durvalcrm</wildfly.context.root>
-                <wildfly.managementUrl>https://durvalcrm.org:9443/management/</wildfly.managementUrl>
+                <wildfly.managementUrl>https://management.cecairbar.org.br</wildfly.managementUrl>
                 
                 <!-- SSH connection properties for production deployment -->
-                <production.ssh.host>durvalcrm.org</production.ssh.host>
+                <production.ssh.host>72.60.12.121</production.ssh.host>
                 <production.ssh.port>22</production.ssh.port>
                 <production.ssh.user>root</production.ssh.user>
                 <!-- SSH key path should be configured externally or use SSH agent -->
