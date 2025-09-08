@@ -262,6 +262,17 @@
                         <exclude>**/filter/**</exclude>
                         <!-- Exclude Entities (already tested) -->
                         <exclude>**/entity/**</exclude>
+                        <!-- Exclude Infrastructure repositories (without business logic) -->
+                        <exclude>**/infrastructure/persistence/repository/**</exclude>
+                        <!-- Exclude Service layer (PIX, etc) -->
+                        <exclude>**/application/service/**</exclude>
+                        <!-- Exclude Scheduler -->
+                        <exclude>**/infrastructure/scheduler/**</exclude>
+                        <!-- Exclude Builder patterns -->
+                        <exclude>**/*Builder.class</exclude>
+                        <!-- Exclude inner classes for requests/responses -->
+                        <exclude>**/*Request.class</exclude>
+                        <exclude>**/*Response.class</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -277,11 +288,9 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
-                    <!-- Coverage check disabled for flexibility -->
-                    <!-- Can be enabled with: mvn verify -Djacoco.check.enabled=true -->
+                    <!-- Coverage check enabled for CI -->
                     <execution>
                         <id>jacoco-check</id>
-                        <phase>none</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
@@ -293,17 +302,30 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.15</minimum>
+                                            <minimum>0.30</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.10</minimum>
+                                            <minimum>0.25</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>br.org.cecairbar.durvalcrm.domain.model</include>
+                                        <include>br.org.cecairbar.durvalcrm.application.usecase.impl</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
                             </rules>
-                            <skip>true</skip>
                         </configuration>
                     </execution>
                 </executions>
