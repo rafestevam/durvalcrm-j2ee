@@ -240,6 +240,8 @@ See `BUILD-DEPLOY-GUIDE.md` for comprehensive deployment documentation.
 
 ## Testing
 
+DurvalCRM Backend implements a comprehensive unit testing framework with utilities, base classes, and example tests. See **[TESTING-GUIDE.md](../TESTING-GUIDE.md)** for complete documentation.
+
 ### Running Tests
 ```bash
 # All tests
@@ -248,22 +250,320 @@ mvn test
 # Specific test class
 mvn test -Dtest=AssociadoUseCaseTest
 
+# Specific test method
+mvn test -Dtest=AssociadoUseCaseTest#deveRetornarAssociadoPorId
+
 # With coverage report
 mvn test jacoco:report
+# Report: target/site/jacoco/index.html
+
+# Skip tests during build
+mvn clean package -DskipTests
 ```
 
 ### Test Configuration
-- **Framework**: JUnit 4.13
+- **Framework**: JUnit 4.13.2
 - **Mocking**: Mockito 5.4
-- **Test Database**: H2 in-memory
+- **Test Database**: H2 in-memory (PostgreSQL-compatible mode)
 - **Coverage Tool**: JaCoCo
 - **Minimum Coverage**: 30% line, 25% branch
+- **High-value targets**: 85% line for domain models and use case implementations
+
+### Testing Framework Structure
+
+```
+src/test/java/br/org/cecairbar/durvalcrm/
+├── test/                        # Testing framework
+│   ├── base/                    # Base test classes
+│   │   ├── BaseUseCaseTest      # Base for use case tests
+│   │   ├── BaseRepositoryTest   # Base for repository tests (with EntityManager)
+│   │   └── BaseResourceTest     # Base for REST endpoint tests
+│   └── util/                    # Test utilities
+│       ├── TestDataBuilder      # Fluent builders for test data
+│       ├── MockFactory          # Factory for creating mocks
+│       └── TestAssertions       # Fluent assertions for domain entities
+├── examples/                    # Example tests demonstrating framework usage
+│   ├── MensalidadeUseCaseExampleTest.java
+│   └── VendaResourceExampleTest.java
+├── domain/model/                # Domain entity tests
+├── application/usecase/         # Use case tests
+└── infrastructure/web/          # REST resource tests
+```
+
+### Test Utilities
+
+#### 1. TestDataBuilder - Fluent Test Data Creation
+
+Create test objects with sensible defaults:
+
+```java
+import static br.org.cecairbar.durvalcrm.test.util.TestDataBuilder.*;
+
+// Create an Associado with defaults
+Associado associado = umAssociado().build();
+
+// Customize values
+Associado customAssociado = umAssociado()
+    .comNome("Maria Santos")
+    .comCpf("987.654.321-00")
+    .comEmail("maria@example.com")
+    .ativo()
+    .build();
+
+// Create Mensalidade
+Mensalidade mensalidade = umaMensalidade()
+    .paraAssociado(associadoId)
+    .referencia(5, 2024)
+    .comValor(new BigDecimal("10.90"))
+    .build();
+
+// Create Doacao
+Doacao doacao = umaDoacao()
+    .deAssociado(associado)
+    .comValor(new BigDecimal("50.00"))
+    .confirmada()
+    .build();
+
+// Create Venda
+Venda venda = umaVenda()
+    .comDescricao("Venda de livros")
+    .comValor(new BigDecimal("30.00"))
+    .comOrigem(OrigemVenda.BAZAR)
+    .build();
+```
+
+#### 2. MockFactory - Centralized Mock Creation
+
+```java
+import static br.org.cecairbar.durvalcrm.test.util.MockFactory.*;
+
+// Create repository mocks
+AssociadoRepository mockRepo = mockAssociadoRepository();
+MensalidadeRepository mockMensalidadeRepo = mockMensalidadeRepository();
+DoacaoRepository mockDoacaoRepo = mockDoacaoRepository();
+VendaRepository mockVendaRepo = mockVendaRepository();
+
+// Reset mocks between tests
+MockFactory.resetMocks(mockRepo, mockMensalidadeRepo);
+```
+
+#### 3. TestAssertions - Fluent Domain Validations
+
+```java
+import static br.org.cecairbar.durvalcrm.test.util.TestAssertions.*;
+
+// Validate Associado
+assertAssociado(associado)
+    .hasId(expectedId)
+    .hasNome("João Silva")
+    .hasCpf("123.456.789-00")
+    .hasEmail("joao@example.com")
+    .isAtivo();
+
+// Validate Mensalidade
+assertMensalidade(mensalidade)
+    .pertenceAoAssociado(associadoId)
+    .hasReferencia(5, 2024)
+    .hasValor(new BigDecimal("10.90"))
+    .isPendente()
+    .naoTemPagamento();
+
+// Validate Doacao
+assertDoacao(doacao)
+    .deAssociado(associado)
+    .hasTipo(TipoDoacao.UNICA)
+    .hasValor(new BigDecimal("50.00"))
+    .isConfirmada();
+
+// Validate Venda
+assertVenda(venda)
+    .hasOrigem(OrigemVenda.CANTINA)
+    .hasValor(new BigDecimal("25.00"))
+    .hasFormaPagamento(FormaPagamento.DINHEIRO);
+```
+
+#### 4. Base Test Classes
+
+**BaseUseCaseTest** - For testing business logic:
+```java
+public class MeuUseCaseTest extends BaseUseCaseTest {
+    private MeuUseCase useCase;
+    private MyRepository mockRepository;
+
+    @Before
+    public void setUp() {
+        super.setUp();
+        mockRepository = MockFactory.mockMyRepository();
+        useCase = new MeuUseCaseImpl(mockRepository);
+    }
+
+    @Test
+    public void deveExecutarOperacao() {
+        // Test business logic with helper methods
+        assertBusinessRuleViolation(
+            () -> useCase.operacaoInvalida(),
+            "Mensagem de erro esperada"
+        );
+    }
+}
+```
+
+**BaseRepositoryTest** - For testing data access with H2:
+```java
+public class MeuRepositoryTest extends BaseRepositoryTest {
+    private MeuRepositoryImpl repository;
+
+    @Before
+    public void setUp() {
+        super.setUp();
+        repository = new MeuRepositoryImpl(entityManager);
+    }
+
+    @Test
+    public void deveSalvarEntidade() {
+        beginTransaction();
+        // Perform database operations
+        commitTransaction();
+
+        flushAndClear();
+        // Assertions
+    }
+}
+```
+
+**BaseResourceTest** - For testing REST endpoints:
+```java
+public class MeuResourceTest extends BaseResourceTest {
+    private MeuResource resource;
+    private MeuUseCase mockUseCase;
+
+    @Before
+    public void setUp() {
+        super.setUp();
+        mockUseCase = mock(MeuUseCase.class);
+        resource = new MeuResource(mockUseCase);
+    }
+
+    @Test
+    public void deveRetornar200() {
+        Response response = resource.buscar();
+
+        assertOk(response);
+        assertNotNull(response.getEntity());
+    }
+}
+```
+
+### Example Test: Use Case
+
+```java
+public class MensalidadeUseCaseTest extends BaseUseCaseTest {
+    private MensalidadeUseCaseImpl useCase;
+    private MensalidadeRepository mockRepository;
+
+    @Before
+    public void setUp() {
+        super.setUp();
+        mockRepository = MockFactory.mockMensalidadeRepository();
+        useCase = new MensalidadeUseCaseImpl(mockRepository);
+    }
+
+    @Test
+    public void deveCriarNovaMensalidade() {
+        // Arrange
+        UUID associadoId = UUID.randomUUID();
+        Mensalidade mensalidade = TestDataBuilder.umaMensalidade()
+            .paraAssociado(associadoId)
+            .build();
+
+        when(mockRepository.save(any())).thenReturn(mensalidade);
+
+        // Act
+        Mensalidade resultado = useCase.criar(associadoId, 5, 2024,
+            new BigDecimal("10.90"));
+
+        // Assert
+        assertMensalidade(resultado)
+            .pertenceAoAssociado(associadoId)
+            .isPendente();
+        verify(mockRepository).save(any());
+    }
+}
+```
+
+### Example Test: REST Resource
+
+```java
+public class VendaResourceTest extends BaseResourceTest {
+    private VendaResource resource;
+    private VendaUseCase mockUseCase;
+
+    @Before
+    public void setUp() {
+        super.setUp();
+        mockUseCase = mock(VendaUseCase.class);
+        resource = new VendaResource(mockUseCase);
+    }
+
+    @Test
+    public void deveCriarVenda() {
+        // Arrange
+        VendaDTO dto = new VendaDTO();
+        dto.setDescricao("Nova venda");
+        dto.setValor(new BigDecimal("30.00"));
+
+        Venda vendaCriada = TestDataBuilder.umaVenda()
+            .comDescricao(dto.getDescricao())
+            .build();
+
+        when(mockUseCase.criar(any())).thenReturn(vendaCriada);
+
+        // Act
+        Response response = resource.criar(dto);
+
+        // Assert
+        assertCreated(response);
+        verify(mockUseCase).criar(any());
+    }
+}
+```
+
+### Test Database Configuration
+
+H2 in-memory database is configured in `src/test/resources/META-INF/persistence.xml`:
+- PostgreSQL compatibility mode
+- Auto schema creation (create-drop)
+- Fast in-memory performance
+- No external dependencies
 
 ### Coverage Exclusions
 - DTOs (`**/dto/**`)
 - MapStruct generated mappers (`**/mapper/**/*Impl.class`)
 - JPA entities (`**/persistence/entity/**`)
 - Infrastructure repositories (`**/infrastructure/repository/**`)
+- Services (`**/application/service/**`)
+- Schedulers (`**/infrastructure/scheduler/**`)
+- Configuration classes
+- Exception handlers
+
+### Best Practices
+
+1. **Use AAA Pattern**: Arrange, Act, Assert
+2. **Descriptive Names**: `deveRetornarAssociadoQuandoIdExiste`
+3. **One Assertion Per Concept**: Focus on single behavior
+4. **Use Test Utilities**: Leverage TestDataBuilder, MockFactory, TestAssertions
+5. **Isolate Tests**: No dependencies between tests
+6. **Mock External Dependencies**: Only mock repositories and external services
+7. **Test Business Logic**: Focus on use cases and domain logic
+8. **Clean Test Data**: Use builders for consistent, readable test data
+
+### Running Examples
+
+See example tests in `src/test/java/.../examples/`:
+- `MensalidadeUseCaseExampleTest.java` - Complete use case test
+- `VendaResourceExampleTest.java` - Complete REST resource test
+
+These demonstrate all framework features and serve as templates for new tests.
 
 ## WildFly Configuration
 
