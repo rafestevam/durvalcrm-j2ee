@@ -28,33 +28,6 @@ This is the Jakarta EE version, converted from the original Quarkus application 
 - **JUnit 4.13 + Mockito 5.4** - Testing framework
 - **JaCoCo** - Code coverage reporting
 
-## Architecture
-
-The application follows **Clean Architecture / Domain-Driven Design** principles with clear separation of concerns:
-
-```
-br.org.cecairbar.durvalcrm/
-├── domain/                    # Core business layer
-│   ├── model/                 # Domain entities (Associado, Mensalidade, Doacao, Venda)
-│   └── repository/            # Repository interfaces (contracts)
-├── application/               # Application logic layer
-│   ├── usecase/               # Business use cases (CreateAssociado, GenerateMensalidade, etc.)
-│   ├── dto/                   # Data Transfer Objects for API communication
-│   ├── mapper/                # MapStruct mappers (DTO ↔ Entity conversion)
-│   └── service/               # Application services (PIX, email, etc.)
-└── infrastructure/            # External concerns layer
-    ├── web/resource/          # JAX-RS REST endpoints (@Path controllers)
-    ├── persistence/           # JPA entities & repository implementations
-    └── scheduler/             # EJB scheduled jobs (monthly billing automation)
-```
-
-**Key Design Patterns:**
-- Repository pattern with JPA EntityManager
-- Use case pattern for business operations
-- DTO pattern for API contracts
-- Dependency injection via CDI
-- Soft delete pattern for data retention
-
 ## Quick Start
 
 ### Prerequisites
@@ -89,24 +62,28 @@ br.org.cecairbar.durvalcrm/
 
 ## Maven Commands
 
-### Build & Package
+### Build & Test
 ```bash
 # Clean and compile
 mvn clean compile
 
-# Run unit tests
+# Run all tests
 mvn test
 
-# Run specific test
+# Run specific test class
 mvn test -Dtest=AssociadoUseCaseTest
 
-# Generate test coverage report (JaCoCo)
-mvn test jacoco:report
-# Report available at: target/site/jacoco/index.html
+# Run specific test method
+mvn test -Dtest=AssociadoUseCaseTest#deveRetornarAssociadoPorId
 
-# Package WAR file
+# Generate coverage report (output: target/site/jacoco/index.html)
+mvn test jacoco:report
+
+# Package WAR file (output: target/durvalcrm.war)
 mvn clean package
-# Output: target/durvalcrm.war
+
+# Skip tests during build
+mvn clean package -DskipTests
 ```
 
 ### Deployment
@@ -121,28 +98,45 @@ mvn clean package wildfly:deploy -Pstaging
 mvn clean package wildfly:deploy -Pproduction
 ```
 
-## Deployment Environments
-
-### Development (Local)
-- **URL**: http://localhost:9991/durvalcrm/
-- **Database**: PostgreSQL via Podman Compose
-- **Profile**: `development` (default)
-
-### Staging (Vagrant VM)
-- **URL**: http://localhost:9443/durvalcrm/ (SSH tunnel)
-- **Profile**: `staging`
-- **Deployment**: SSH-based via Maven profile
-
-### Production (Cloud VPS)
-- **Domain**: https://cecairbar.org.br, https://durvalcrm.org
-- **Profile**: `production`
-- **Deployment**: Remote deployment via Maven + shell scripts
-
 See `BUILD-DEPLOY-GUIDE.md` for comprehensive deployment documentation.
+
+## Architecture
+
+The application follows **Clean Architecture / Domain-Driven Design** principles with clear separation of concerns:
+
+```
+br.org.cecairbar.durvalcrm/
+├── domain/                    # Core business layer
+│   ├── model/                 # Domain entities (Associado, Mensalidade, Doacao, Venda)
+│   └── repository/            # Repository interfaces (contracts)
+├── application/               # Application logic layer
+│   ├── usecase/               # Business use cases
+│   │   ├── impl/              # Use case implementations
+│   │   ├── mensalidade/       # Monthly payment use cases
+│   │   ├── venda/             # Sales use cases
+│   │   ├── dashboard/         # Dashboard use cases
+│   │   └── doacao/            # Donation use cases
+│   ├── dto/                   # Data Transfer Objects
+│   ├── mapper/                # MapStruct mappers (DTO ↔ Entity)
+│   └── service/               # Application services (PIX, email, etc.)
+└── infrastructure/            # External concerns layer
+    ├── web/resource/          # JAX-RS REST endpoints (@Path)
+    ├── persistence/           # JPA entities & repository implementations
+    │   ├── entity/            # JPA entity classes
+    │   └── repository/        # Repository implementations
+    └── scheduler/             # EJB scheduled jobs (monthly billing)
+```
+
+**Key Design Patterns:**
+- Repository pattern with JPA EntityManager
+- Use case pattern for business operations
+- DTO pattern for API contracts
+- Dependency injection via CDI
+- Soft delete pattern for data retention
 
 ## API Documentation
 
-**Base URL Pattern**: `https://[domain]/durvalcrm/api/v1/`
+**Base URL**: `https://[domain]/durvalcrm/api/v1/`
 
 ### Endpoints
 
@@ -172,10 +166,8 @@ See `BUILD-DEPLOY-GUIDE.md` for comprehensive deployment documentation.
 - `POST /vendas` - Register new sale
 - `PUT  /vendas/{id}` - Update sale
 
-#### Analytics
+#### Analytics & Health
 - `GET /dashboard` - Dashboard metrics (members, payments, donations, sales)
-
-#### Health & Monitoring
 - `GET /health` - Health check endpoint
 
 **Note**: All endpoints are currently **public** (no authentication required). The frontend uses Keycloak for authentication, but the backend does not enforce it.
@@ -201,13 +193,13 @@ See `BUILD-DEPLOY-GUIDE.md` for comprehensive deployment documentation.
 - Ready for integration with real PIX provider
 
 ### Data Integrity
-- CPF validation enforced
+- CPF validation enforced via Bean Validation
 - Soft delete pattern (preserves data)
 - Referential integrity via JPA relationships
 
-## Database Schema
+## Database
 
-### Key Tables
+### Schema
 
 **associados** - Member information
 - nome_completo, cpf, email, telefone
@@ -230,10 +222,9 @@ See `BUILD-DEPLOY-GUIDE.md` for comprehensive deployment documentation.
 **vendas** - Sales records
 - associado_id (nullable FK)
 - tipo (CANTINA, BAZAR, LIVRO)
-- valor, data_venda
-- descricao
+- valor, data_venda, descricao
 
-### Database Configuration
+### Configuration
 - **JNDI Name**: `java:jboss/datasources/DurvalCRMDS`
 - **Persistence Unit**: `durvalcrm-pu`
 - **Schema Management**: JPA auto-update (use Flyway/Liquibase for production)
@@ -242,7 +233,33 @@ See `BUILD-DEPLOY-GUIDE.md` for comprehensive deployment documentation.
 
 DurvalCRM Backend implements a comprehensive unit testing framework with utilities, base classes, and example tests. See **[TESTING-GUIDE.md](../TESTING-GUIDE.md)** for complete documentation.
 
+### Quick Overview
+
+**Framework**:
+- JUnit 4.13.2 for unit tests
+- Mockito 5.4 for dependency mocking
+- H2 in-memory database (PostgreSQL-compatible mode)
+- JaCoCo code coverage (minimum: 30% line, 25% branch)
+
+**Test Structure**:
+```
+src/test/java/br/org/cecairbar/durvalcrm/
+├── test/                        # Testing framework
+│   ├── base/                    # Base test classes
+│   │   ├── BaseUseCaseTest      # Base for use case tests
+│   │   ├── BaseRepositoryTest   # Base for repository tests
+│   │   └── BaseResourceTest     # Base for REST endpoint tests
+│   └── util/                    # Test utilities
+│       ├── TestDataBuilder      # Fluent builders for test data
+│       ├── MockFactory          # Factory for creating mocks
+│       └── TestAssertions       # Fluent assertions for entities
+└── examples/                    # Example tests
+    ├── MensalidadeUseCaseExampleTest.java
+    └── VendaResourceExampleTest.java
+```
+
 ### Running Tests
+
 ```bash
 # All tests
 mvn test
@@ -253,60 +270,26 @@ mvn test -Dtest=AssociadoUseCaseTest
 # Specific test method
 mvn test -Dtest=AssociadoUseCaseTest#deveRetornarAssociadoPorId
 
-# With coverage report
+# With coverage report (output: target/site/jacoco/index.html)
 mvn test jacoco:report
-# Report: target/site/jacoco/index.html
 
 # Skip tests during build
 mvn clean package -DskipTests
 ```
 
-### Test Configuration
-- **Framework**: JUnit 4.13.2
-- **Mocking**: Mockito 5.4
-- **Test Database**: H2 in-memory (PostgreSQL-compatible mode)
-- **Coverage Tool**: JaCoCo
-- **Minimum Coverage**: 30% line, 25% branch
-- **High-value targets**: 85% line for domain models and use case implementations
+### Test Utilities Examples
 
-### Testing Framework Structure
-
-```
-src/test/java/br/org/cecairbar/durvalcrm/
-├── test/                        # Testing framework
-│   ├── base/                    # Base test classes
-│   │   ├── BaseUseCaseTest      # Base for use case tests
-│   │   ├── BaseRepositoryTest   # Base for repository tests (with EntityManager)
-│   │   └── BaseResourceTest     # Base for REST endpoint tests
-│   └── util/                    # Test utilities
-│       ├── TestDataBuilder      # Fluent builders for test data
-│       ├── MockFactory          # Factory for creating mocks
-│       └── TestAssertions       # Fluent assertions for domain entities
-├── examples/                    # Example tests demonstrating framework usage
-│   ├── MensalidadeUseCaseExampleTest.java
-│   └── VendaResourceExampleTest.java
-├── domain/model/                # Domain entity tests
-├── application/usecase/         # Use case tests
-└── infrastructure/web/          # REST resource tests
-```
-
-### Test Utilities
-
-#### 1. TestDataBuilder - Fluent Test Data Creation
-
-Create test objects with sensible defaults:
-
+**TestDataBuilder** - Create test data with sensible defaults:
 ```java
 import static br.org.cecairbar.durvalcrm.test.util.TestDataBuilder.*;
 
-// Create an Associado with defaults
+// Create Associado with defaults
 Associado associado = umAssociado().build();
 
 // Customize values
-Associado customAssociado = umAssociado()
+Associado custom = umAssociado()
     .comNome("Maria Santos")
     .comCpf("987.654.321-00")
-    .comEmail("maria@example.com")
     .ativo()
     .build();
 
@@ -316,254 +299,85 @@ Mensalidade mensalidade = umaMensalidade()
     .referencia(5, 2024)
     .comValor(new BigDecimal("10.90"))
     .build();
-
-// Create Doacao
-Doacao doacao = umaDoacao()
-    .deAssociado(associado)
-    .comValor(new BigDecimal("50.00"))
-    .confirmada()
-    .build();
-
-// Create Venda
-Venda venda = umaVenda()
-    .comDescricao("Venda de livros")
-    .comValor(new BigDecimal("30.00"))
-    .comOrigem(OrigemVenda.BAZAR)
-    .build();
 ```
 
-#### 2. MockFactory - Centralized Mock Creation
-
-```java
-import static br.org.cecairbar.durvalcrm.test.util.MockFactory.*;
-
-// Create repository mocks
-AssociadoRepository mockRepo = mockAssociadoRepository();
-MensalidadeRepository mockMensalidadeRepo = mockMensalidadeRepository();
-DoacaoRepository mockDoacaoRepo = mockDoacaoRepository();
-VendaRepository mockVendaRepo = mockVendaRepository();
-
-// Reset mocks between tests
-MockFactory.resetMocks(mockRepo, mockMensalidadeRepo);
-```
-
-#### 3. TestAssertions - Fluent Domain Validations
-
+**TestAssertions** - Fluent domain validations:
 ```java
 import static br.org.cecairbar.durvalcrm.test.util.TestAssertions.*;
 
 // Validate Associado
 assertAssociado(associado)
-    .hasId(expectedId)
     .hasNome("João Silva")
     .hasCpf("123.456.789-00")
-    .hasEmail("joao@example.com")
     .isAtivo();
 
 // Validate Mensalidade
 assertMensalidade(mensalidade)
     .pertenceAoAssociado(associadoId)
     .hasReferencia(5, 2024)
-    .hasValor(new BigDecimal("10.90"))
-    .isPendente()
-    .naoTemPagamento();
-
-// Validate Doacao
-assertDoacao(doacao)
-    .deAssociado(associado)
-    .hasTipo(TipoDoacao.UNICA)
-    .hasValor(new BigDecimal("50.00"))
-    .isConfirmada();
-
-// Validate Venda
-assertVenda(venda)
-    .hasOrigem(OrigemVenda.CANTINA)
-    .hasValor(new BigDecimal("25.00"))
-    .hasFormaPagamento(FormaPagamento.DINHEIRO);
+    .isPendente();
 ```
 
-#### 4. Base Test Classes
-
-**BaseUseCaseTest** - For testing business logic:
+**Base Test Classes** - Extend for specific test types:
 ```java
-public class MeuUseCaseTest extends BaseUseCaseTest {
-    private MeuUseCase useCase;
+// Use Case Test
+public class MyUseCaseTest extends BaseUseCaseTest {
+    private MyUseCase useCase;
     private MyRepository mockRepository;
 
     @Before
     public void setUp() {
         super.setUp();
         mockRepository = MockFactory.mockMyRepository();
-        useCase = new MeuUseCaseImpl(mockRepository);
+        useCase = new MyUseCaseImpl(mockRepository);
     }
 
     @Test
     public void deveExecutarOperacao() {
-        // Test business logic with helper methods
-        assertBusinessRuleViolation(
-            () -> useCase.operacaoInvalida(),
-            "Mensagem de erro esperada"
-        );
+        // Arrange, Act, Assert
     }
 }
 ```
-
-**BaseRepositoryTest** - For testing data access with H2:
-```java
-public class MeuRepositoryTest extends BaseRepositoryTest {
-    private MeuRepositoryImpl repository;
-
-    @Before
-    public void setUp() {
-        super.setUp();
-        repository = new MeuRepositoryImpl(entityManager);
-    }
-
-    @Test
-    public void deveSalvarEntidade() {
-        beginTransaction();
-        // Perform database operations
-        commitTransaction();
-
-        flushAndClear();
-        // Assertions
-    }
-}
-```
-
-**BaseResourceTest** - For testing REST endpoints:
-```java
-public class MeuResourceTest extends BaseResourceTest {
-    private MeuResource resource;
-    private MeuUseCase mockUseCase;
-
-    @Before
-    public void setUp() {
-        super.setUp();
-        mockUseCase = mock(MeuUseCase.class);
-        resource = new MeuResource(mockUseCase);
-    }
-
-    @Test
-    public void deveRetornar200() {
-        Response response = resource.buscar();
-
-        assertOk(response);
-        assertNotNull(response.getEntity());
-    }
-}
-```
-
-### Example Test: Use Case
-
-```java
-public class MensalidadeUseCaseTest extends BaseUseCaseTest {
-    private MensalidadeUseCaseImpl useCase;
-    private MensalidadeRepository mockRepository;
-
-    @Before
-    public void setUp() {
-        super.setUp();
-        mockRepository = MockFactory.mockMensalidadeRepository();
-        useCase = new MensalidadeUseCaseImpl(mockRepository);
-    }
-
-    @Test
-    public void deveCriarNovaMensalidade() {
-        // Arrange
-        UUID associadoId = UUID.randomUUID();
-        Mensalidade mensalidade = TestDataBuilder.umaMensalidade()
-            .paraAssociado(associadoId)
-            .build();
-
-        when(mockRepository.save(any())).thenReturn(mensalidade);
-
-        // Act
-        Mensalidade resultado = useCase.criar(associadoId, 5, 2024,
-            new BigDecimal("10.90"));
-
-        // Assert
-        assertMensalidade(resultado)
-            .pertenceAoAssociado(associadoId)
-            .isPendente();
-        verify(mockRepository).save(any());
-    }
-}
-```
-
-### Example Test: REST Resource
-
-```java
-public class VendaResourceTest extends BaseResourceTest {
-    private VendaResource resource;
-    private VendaUseCase mockUseCase;
-
-    @Before
-    public void setUp() {
-        super.setUp();
-        mockUseCase = mock(VendaUseCase.class);
-        resource = new VendaResource(mockUseCase);
-    }
-
-    @Test
-    public void deveCriarVenda() {
-        // Arrange
-        VendaDTO dto = new VendaDTO();
-        dto.setDescricao("Nova venda");
-        dto.setValor(new BigDecimal("30.00"));
-
-        Venda vendaCriada = TestDataBuilder.umaVenda()
-            .comDescricao(dto.getDescricao())
-            .build();
-
-        when(mockUseCase.criar(any())).thenReturn(vendaCriada);
-
-        // Act
-        Response response = resource.criar(dto);
-
-        // Assert
-        assertCreated(response);
-        verify(mockUseCase).criar(any());
-    }
-}
-```
-
-### Test Database Configuration
-
-H2 in-memory database is configured in `src/test/resources/META-INF/persistence.xml`:
-- PostgreSQL compatibility mode
-- Auto schema creation (create-drop)
-- Fast in-memory performance
-- No external dependencies
-
-### Coverage Exclusions
-- DTOs (`**/dto/**`)
-- MapStruct generated mappers (`**/mapper/**/*Impl.class`)
-- JPA entities (`**/persistence/entity/**`)
-- Infrastructure repositories (`**/infrastructure/repository/**`)
-- Services (`**/application/service/**`)
-- Schedulers (`**/infrastructure/scheduler/**`)
-- Configuration classes
-- Exception handlers
 
 ### Best Practices
 
-1. **Use AAA Pattern**: Arrange, Act, Assert
+1. **AAA Pattern**: Arrange, Act, Assert
 2. **Descriptive Names**: `deveRetornarAssociadoQuandoIdExiste`
-3. **One Assertion Per Concept**: Focus on single behavior
-4. **Use Test Utilities**: Leverage TestDataBuilder, MockFactory, TestAssertions
-5. **Isolate Tests**: No dependencies between tests
-6. **Mock External Dependencies**: Only mock repositories and external services
-7. **Test Business Logic**: Focus on use cases and domain logic
-8. **Clean Test Data**: Use builders for consistent, readable test data
+3. **Use Test Utilities**: TestDataBuilder, MockFactory, TestAssertions
+4. **Isolate Tests**: No dependencies between tests
+5. **Mock Appropriately**: Only external dependencies
+6. **Focus on Behavior**: Test business logic, not implementation
 
-### Running Examples
+See `src/test/java/.../examples/` for complete example tests and **[TESTING-GUIDE.md](../TESTING-GUIDE.md)** for detailed documentation.
 
-See example tests in `src/test/java/.../examples/`:
-- `MensalidadeUseCaseExampleTest.java` - Complete use case test
-- `VendaResourceExampleTest.java` - Complete REST resource test
+## Deployment
 
-These demonstrate all framework features and serve as templates for new tests.
+### Environments
+
+**Development (Local)**
+- URL: http://localhost:9991/durvalcrm/
+- Database: PostgreSQL via Podman Compose
+- Profile: `development` (default)
+
+**Staging (Vagrant VM)**
+- URL: http://localhost:9443/durvalcrm/ (SSH tunnel)
+- Profile: `staging`
+- Deployment: SSH-based via Maven profile
+
+**Production (Cloud VPS)**
+- Domain: https://cecairbar.org.br, https://durvalcrm.org
+- Profile: `production`
+- Deployment: Remote deployment via Maven + shell scripts
+
+### Deployment Scripts
+
+Located in `durvalcrm-j2ee/` root:
+- `build.sh` - Maven build automation with validation
+- `deploy.sh` - WildFly deployment with database configuration
+- `pipeline.sh` - Complete CI/CD pipeline (build → test → deploy → verify)
+- `dev-tools.sh` - Development utilities (status checks, quick builds, API tests)
+
+See **[BUILD-DEPLOY-GUIDE.md](BUILD-DEPLOY-GUIDE.md)** for comprehensive deployment documentation.
 
 ## WildFly Configuration
 
@@ -588,16 +402,14 @@ Configure PostgreSQL DataSource via WildFly CLI:
     password=durvaldev@123 \
 )
 
-# 3. Enable DataSource
+# 3. Enable and test
 /subsystem=datasources/data-source=DurvalCRMDS:enable
-
-# 4. Test connection
 /subsystem=datasources/data-source=DurvalCRMDS:test-connection-in-pool
 ```
 
 ### PostgreSQL Driver Installation
 
-Option 1: As WildFly module (recommended)
+**Option 1: WildFly module (recommended)**
 ```bash
 # Create module directory
 mkdir -p $WILDFLY_HOME/modules/org/postgresql/main
@@ -608,7 +420,7 @@ cp postgresql-42.7.3.jar $WILDFLY_HOME/modules/org/postgresql/main/
 # Create module.xml (see WildFly documentation)
 ```
 
-Option 2: Deploy as driver deployment
+**Option 2: Driver deployment**
 ```bash
 cp postgresql-42.7.3.jar $WILDFLY_HOME/standalone/deployments/
 ```
@@ -618,18 +430,19 @@ cp postgresql-42.7.3.jar $WILDFLY_HOME/standalone/deployments/
 ### Key Changes
 
 1. **Dependencies**: Quarkus → Jakarta EE 10 APIs
-2. **Imports**: Uses `jakarta.*` (not `javax.*`) for Jakarta EE 10
-3. **Panache → JPA**: Replaced Quarkus Panache with standard JPA EntityManager
+2. **Imports**: Uses `jakarta.*` (not `javax.*`)
+3. **Persistence**: Quarkus Panache → Standard JPA EntityManager
 4. **Scheduler**: Quarkus `@Scheduled` → EJB `@Schedule`
 5. **Security**: All authentication/authorization removed (public API)
 6. **Build**: Quarkus build → Standard WAR packaging
 7. **Context Root**: Configured in `jboss-web.xml`
 
 ### Why Jakarta EE?
-- Enterprise-grade stability and support
+
+- Enterprise-grade stability and long-term support
 - Wide application server compatibility (WildFly, Payara, WebLogic, etc.)
 - Standard specifications (no vendor lock-in)
-- Long-term support and maintenance
+- Proven track record in enterprise environments
 
 ## Project Structure
 
@@ -654,24 +467,25 @@ durvalcrm-j2ee/
 │       ├── java/                    # Unit tests
 │       └── resources/
 │           └── META-INF/
-│               └── persistence.xml  # Test persistence config (H2)
+│               └── persistence.xml  # Test persistence (H2)
 ├── pom.xml                          # Maven configuration
 ├── BUILD-DEPLOY-GUIDE.md           # Deployment documentation
+├── TESTING-GUIDE.md                # Testing framework guide
 └── README.md                        # This file
 ```
 
 ## Configuration Files
 
-### persistence.xml
+**persistence.xml**
 - Defines JPA persistence unit `durvalcrm-pu`
 - References JNDI DataSource
 - Hibernate-specific configurations
 
-### jboss-web.xml
+**jboss-web.xml**
 - Context root: `/durvalcrm`
 - Security domain configuration (currently unused)
 
-### pom.xml
+**pom.xml**
 - Maven profiles: development, staging, production
 - Dependencies: Jakarta EE 10 BOM, Hibernate, PostgreSQL, MapStruct, Lombok
 - Build configuration: WAR packaging, compiler settings, test coverage
@@ -712,14 +526,15 @@ durvalcrm-j2ee/
 5. Update API documentation for new endpoints
 6. Test on WildFly 37 before committing
 
-## License
-
-Proprietary - CECA Irbar Association
-
 ## Related Projects
 
 - **durvalcrm-frontend**: Vue 3 + TypeScript frontend application
-- **Infrastructure**: Podman Compose for local development, Ansible for deployment
+- **durvalcrm-deployment**: Infrastructure as code (Ansible, Podman Compose)
+- **durvalcrm-keycloak-theme**: Custom Keycloak authentication theme
+
+## License
+
+Proprietary - CECA Irbar Association
 
 ## Support
 
