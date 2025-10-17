@@ -3,6 +3,11 @@ package br.org.cecairbar.durvalcrm.application.usecase.dashboard;
 import br.org.cecairbar.durvalcrm.application.dto.DashboardDTO;
 import br.org.cecairbar.durvalcrm.application.dto.DashboardDTO.AssociadoResumoDTO;
 import br.org.cecairbar.durvalcrm.application.dto.ReceitasPorMetodoPagamentoDTO;
+import br.org.cecairbar.durvalcrm.application.dto.ResumoFinanceiroDTO;
+import br.org.cecairbar.durvalcrm.application.dto.ReceitaPorCategoriaDTO;
+import br.org.cecairbar.durvalcrm.application.dto.DespesaPorCategoriaDTO;
+import br.org.cecairbar.durvalcrm.application.usecase.financeiro.RelatorioFinanceiroUseCase;
+import br.org.cecairbar.durvalcrm.application.usecase.financeiro.DespesaUseCase;
 import br.org.cecairbar.durvalcrm.domain.model.OrigemVenda;
 import br.org.cecairbar.durvalcrm.domain.model.StatusMensalidade;
 import br.org.cecairbar.durvalcrm.domain.repository.AssociadoRepository;
@@ -24,21 +29,27 @@ import java.util.ArrayList;
 
 @ApplicationScoped
 public class DashboardUseCaseImpl implements DashboardUseCase {
-    
+
     @Inject
     AssociadoRepository associadoRepository;
-    
+
     @Inject
     MensalidadeRepository mensalidadeRepository;
-    
+
     @Inject
     VendaRepository vendaRepository;
-    
+
     @Inject
     DoacaoRepository doacaoRepository;
-    
+
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    RelatorioFinanceiroUseCase relatorioFinanceiroUseCase;
+
+    @Inject
+    DespesaUseCase despesaUseCase;
     
     @Override
     public DashboardDTO obterDashboard(int mes, int ano) {
@@ -93,18 +104,35 @@ public class DashboardUseCaseImpl implements DashboardUseCase {
             }
             // Associados sem mensalidade para o período não aparecem em nenhuma lista
         });
-        
+
+        // Obter métricas do módulo financeiro
+        ResumoFinanceiroDTO resumoFinanceiro = relatorioFinanceiroUseCase.obterResumoFinanceiro(dataInicio, dataFim);
+        List<ReceitaPorCategoriaDTO> receitasPorCategoria = relatorioFinanceiroUseCase.obterReceitasPorCategoria(dataInicio, dataFim);
+        List<DespesaPorCategoriaDTO> despesasPorCategoria = relatorioFinanceiroUseCase.obterDespesasPorCategoria(dataInicio, dataFim);
+        long despesasVencidas = despesaUseCase.contarVencidas(LocalDate.now());
+
         return DashboardDTO.builder()
+            // Receitas legado
             .receitaConsolidada(receitaConsolidada)
             .receitaMensalidades(receitaMensalidades != null ? receitaMensalidades : BigDecimal.ZERO)
             .receitaCantina(receitaCantina != null ? receitaCantina : BigDecimal.ZERO)
             .receitaBazar(receitaBazar != null ? receitaBazar : BigDecimal.ZERO)
             .receitaLivros(receitaLivros != null ? receitaLivros : BigDecimal.ZERO)
             .receitaDoacoes(receitaDoacoes != null ? receitaDoacoes : BigDecimal.ZERO)
+            // Associados
             .pagantesMes(pagantesMes)
             .totalAssociados(totalAssociados)
             .adimplentes(adimplentes)
             .inadimplentes(inadimplentes)
+            // Módulo Financeiro (novo)
+            .totalReceitas(resumoFinanceiro.getTotalReceitas())
+            .totalDespesas(resumoFinanceiro.getTotalDespesas())
+            .saldoFinanceiro(resumoFinanceiro.getSaldo())
+            .quantidadeReceitas(resumoFinanceiro.getQuantidadeReceitas())
+            .quantidadeDespesas(resumoFinanceiro.getQuantidadeDespesas())
+            .despesasVencidas(despesasVencidas)
+            .receitasPorCategoria(receitasPorCategoria)
+            .despesasPorCategoria(despesasPorCategoria)
             .build();
     }
     
