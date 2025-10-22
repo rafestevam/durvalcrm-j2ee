@@ -16,6 +16,9 @@
         <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.MensalidadeEntity</class>
         <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.DoacaoEntity</class>
         <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.VendaEntity</class>
+        <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.CategoriaFinanceiraEntity</class>
+        <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.ReceitaEntity</class>
+        <class>br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.DespesaEntity</class>
         
         <!-- Don't scan for additional classes -->
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
