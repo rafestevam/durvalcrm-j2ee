@@ -35,7 +35,7 @@ public class VendaResource {
         try {
             VendaDTO vendaCriada = vendaUseCase.criar(vendaDTO);
             return Response.status(Response.Status.CREATED).entity(vendaCriada).build();
-            
+
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of(

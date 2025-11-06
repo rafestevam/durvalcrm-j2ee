@@ -121,7 +121,7 @@ public class VendaUseCaseImpl implements VendaUseCase {
      */
     private Recebimento criarRecebimentoParaVenda(Venda venda) {
         Recebimento recebimento = new Recebimento();
-        recebimento.setId(UUID.randomUUID());
+        // ID será gerado automaticamente pelo JPA após persist()
 
         // Converter Instant para LocalDate
         LocalDate dataRecebimento = venda.getDataVenda()
