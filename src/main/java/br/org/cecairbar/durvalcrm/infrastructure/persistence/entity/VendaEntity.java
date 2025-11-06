@@ -17,31 +17,45 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class VendaEntity {
-    
+
     @Id
     @Column(name = "id", nullable = false)
     public UUID id;
-    
+
     @Column(name = "descricao", nullable = false, length = 255)
     public String descricao;
-    
+
     @Column(name = "valor", nullable = false, precision = 10, scale = 2)
     public BigDecimal valor;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(name = "origem", nullable = false)
     public OrigemVenda origem;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(name = "forma_pagamento", nullable = false)
     public FormaPagamento formaPagamento;
-    
+
+    /**
+     * ID da conta bancária onde o pagamento foi lançado.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    @Column(name = "conta_bancaria_id")
+    public UUID contaBancariaId;
+
+    /**
+     * ID do recebimento vinculado a esta venda.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    @Column(name = "recebimento_id")
+    public UUID recebimentoId;
+
     @Column(name = "data_venda", nullable = false)
     public Instant dataVenda;
-    
+
     @Column(name = "criado_em", nullable = false)
     public Instant criadoEm;
-    
+
     @Column(name = "atualizado_em")
     public Instant atualizadoEm;
     

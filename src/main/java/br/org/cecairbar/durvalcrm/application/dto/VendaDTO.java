@@ -21,25 +21,38 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class VendaDTO {
-    
+
     private UUID id;
-    
+
     @NotEmpty(message = "Descrição é obrigatória")
     @Size(max = 255, message = "Descrição deve ter no máximo 255 caracteres")
     private String descricao;
-    
+
     @NotNull(message = "Valor é obrigatório")
     @DecimalMin(value = "0.01", message = "Valor deve ser maior que zero")
     private BigDecimal valor;
-    
+
     @NotNull(message = "Origem é obrigatória")
     private OrigemVenda origem;
-    
+
     @NotNull(message = "Forma de pagamento é obrigatória")
     private FormaPagamento formaPagamento;
-    
+
+    /**
+     * ID da conta bancária onde o pagamento será/foi lançado.
+     * Opcional: se não fornecido, será selecionada automaticamente baseado na forma de pagamento.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private UUID contaBancariaId;
+
+    /**
+     * ID do recebimento vinculado a esta venda (preenchido após criação).
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private UUID recebimentoId;
+
     private Instant dataVenda;
-    
+
     private Instant criadoEm;
     private Instant atualizadoEm;
     

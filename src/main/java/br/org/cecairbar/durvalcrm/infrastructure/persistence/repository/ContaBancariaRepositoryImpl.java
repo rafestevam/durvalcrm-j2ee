@@ -2,6 +2,7 @@ package br.org.cecairbar.durvalcrm.infrastructure.persistence.repository;
 
 import br.org.cecairbar.durvalcrm.application.financeiro.ContaBancariaMapper;
 import br.org.cecairbar.durvalcrm.domain.model.ContaBancaria;
+import br.org.cecairbar.durvalcrm.domain.model.FinalidadeConta;
 import br.org.cecairbar.durvalcrm.domain.model.StatusConta;
 import br.org.cecairbar.durvalcrm.domain.repository.ContaBancariaRepository;
 import br.org.cecairbar.durvalcrm.infrastructure.persistence.entity.ContaBancariaEntity;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Implementação do repositório de Conta Bancária.
  *
  * US-060: Cadastro de Contas Bancárias e Caixa
+ * US-067: Integração Automática de Vendas com Contas Bancárias
  */
 @ApplicationScoped
 public class ContaBancariaRepositoryImpl implements ContaBancariaRepository {
@@ -99,6 +101,17 @@ public class ContaBancariaRepositoryImpl implements ContaBancariaRepository {
         if (entity != null) {
             entityManager.remove(entity);
         }
+    }
+
+    @Override
+    public List<ContaBancaria> findByFinalidadeAndStatus(FinalidadeConta finalidade, StatusConta status) {
+        TypedQuery<ContaBancariaEntity> query = entityManager.createQuery(
+            "SELECT c FROM ContaBancariaEntity c WHERE c.finalidade = :finalidade AND c.status = :status ORDER BY c.nome",
+            ContaBancariaEntity.class
+        );
+        query.setParameter("finalidade", finalidade);
+        query.setParameter("status", status);
+        return mapper.toDomainList(query.getResultList());
     }
 
     @Override

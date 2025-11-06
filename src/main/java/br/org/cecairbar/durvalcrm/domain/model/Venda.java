@@ -19,30 +19,42 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class Venda {
-    
+
     @NotNull
     private UUID id;
-    
+
     @NotEmpty
     @Size(max = 255)
     private String descricao;
-    
+
     @NotNull
     @DecimalMin(value = "0.01", message = "Valor deve ser maior que zero")
     private BigDecimal valor;
-    
+
     @NotNull
     private OrigemVenda origem;
-    
+
     @NotNull
     private FormaPagamento formaPagamento;
-    
+
+    /**
+     * ID da conta bancária onde o pagamento foi/será lançado.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private UUID contaBancariaId;
+
+    /**
+     * ID do recebimento vinculado a esta venda.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private UUID recebimentoId;
+
     @NotNull
     private Instant dataVenda;
-    
+
     @NotNull
     private Instant criadoEm;
-    
+
     private Instant atualizadoEm;
     
     // Factory method para criar nova venda

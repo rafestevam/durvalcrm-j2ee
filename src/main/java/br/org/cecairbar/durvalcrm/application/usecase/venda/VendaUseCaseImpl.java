@@ -2,9 +2,10 @@ package br.org.cecairbar.durvalcrm.application.usecase.venda;
 
 import br.org.cecairbar.durvalcrm.application.dto.VendaDTO;
 import br.org.cecairbar.durvalcrm.application.dto.ResumoVendasDTO;
-import br.org.cecairbar.durvalcrm.domain.model.Venda;
-import br.org.cecairbar.durvalcrm.domain.model.OrigemVenda;
+import br.org.cecairbar.durvalcrm.domain.model.*;
 import br.org.cecairbar.durvalcrm.domain.repository.VendaRepository;
+import br.org.cecairbar.durvalcrm.domain.repository.ContaBancariaRepository;
+import br.org.cecairbar.durvalcrm.domain.repository.RecebimentoRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,6 +14,9 @@ import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.BadRequestException;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -22,27 +26,154 @@ import java.math.BigDecimal;
 
 @ApplicationScoped
 public class VendaUseCaseImpl implements VendaUseCase {
-    
+
     @Inject
     VendaRepository vendaRepository;
+
+    @Inject
+    ContaBancariaRepository contaBancariaRepository;
+
+    @Inject
+    RecebimentoRepository recebimentoRepository;
     
     
     @Override
     @Transactional
     public VendaDTO criar(VendaDTO vendaDTO) {
-        // Criar venda
+        // US-067: Integração Automática de Vendas com Contas Bancárias
+
+        // 1. Determinar conta bancária
+        UUID contaBancariaId = vendaDTO.getContaBancariaId();
+        if (contaBancariaId == null) {
+            // Buscar conta automaticamente baseado na forma de pagamento
+            contaBancariaId = buscarContaPorFormaPagamento(vendaDTO.getFormaPagamento());
+        } else {
+            // Validar que a conta existe e está ativa
+            validarConta(contaBancariaId);
+        }
+
+        // 2. Criar venda
         Venda venda = Venda.criar(
             vendaDTO.getDescricao(),
             vendaDTO.getValor(),
             vendaDTO.getOrigem(),
             vendaDTO.getFormaPagamento()
         );
-        
-        // Salvar
+        venda.setContaBancariaId(contaBancariaId);
+
+        // 3. Salvar venda
         vendaRepository.save(venda);
-        
-        // Retornar DTO
+
+        // 4. Criar recebimento vinculado à venda
+        Recebimento recebimento = criarRecebimentoParaVenda(venda);
+        recebimentoRepository.save(recebimento);
+
+        // 5. Vincular recebimento à venda
+        venda.setRecebimentoId(recebimento.getId());
+        vendaRepository.update(venda);
+
+        // 6. Atualizar saldo da conta
+        atualizarSaldoConta(contaBancariaId, venda.getValor());
+
+        // 7. Retornar DTO
         return toDTO(venda);
+    }
+
+    /**
+     * Busca conta bancária ativa baseada na forma de pagamento.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private UUID buscarContaPorFormaPagamento(FormaPagamento formaPagamento) {
+        // Mapear FormaPagamento para FinalidadeConta
+        FinalidadeConta finalidade = formaPagamento.toFinalidadeConta();
+
+        // Buscar contas ativas com a finalidade correspondente
+        List<ContaBancaria> contas = contaBancariaRepository
+            .findByFinalidadeAndStatus(finalidade, StatusConta.ATIVA);
+
+        if (contas.isEmpty()) {
+            throw new BadRequestException(
+                String.format("Nenhuma conta ativa configurada para %s. Configure uma conta antes de registrar vendas com esta forma de pagamento.",
+                    formaPagamento.getDescricao())
+            );
+        }
+
+        // Retornar a primeira conta encontrada (pode ser melhorado com lógica de priorização)
+        return contas.get(0).getId();
+    }
+
+    /**
+     * Valida se a conta existe e está ativa.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private void validarConta(UUID contaBancariaId) {
+        ContaBancaria conta = contaBancariaRepository.findById(contaBancariaId)
+            .orElseThrow(() -> new NotFoundException("Conta bancária não encontrada"));
+
+        if (conta.getStatus() != StatusConta.ATIVA) {
+            throw new BadRequestException("Conta bancária não está ativa");
+        }
+    }
+
+    /**
+     * Cria recebimento vinculado à venda.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private Recebimento criarRecebimentoParaVenda(Venda venda) {
+        Recebimento recebimento = new Recebimento();
+        recebimento.setId(UUID.randomUUID());
+
+        // Converter Instant para LocalDate
+        LocalDate dataRecebimento = venda.getDataVenda()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate();
+        recebimento.setDataRecebimento(dataRecebimento);
+
+        recebimento.setValor(venda.getValor());
+
+        // Converter FormaPagamento para FormaPagamentoRecebimento
+        recebimento.setFormaPagamento(venda.getFormaPagamento().toFormaPagamentoRecebimento());
+
+        // Mapear OrigemVenda para OrigemRecebimento
+        recebimento.setOrigem(mapearOrigemVenda(venda.getOrigem()));
+
+        recebimento.setContaBancariaId(venda.getContaBancariaId());
+        recebimento.setVendaId(venda.getId());
+
+        recebimento.setDescricao(
+            String.format("Venda: %s (%s)",
+                venda.getDescricao(),
+                venda.getOrigem().name())
+        );
+
+        recebimento.setCreatedAt(LocalDateTime.now());
+
+        return recebimento;
+    }
+
+    /**
+     * Mapeia OrigemVenda para OrigemRecebimento.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private OrigemRecebimento mapearOrigemVenda(OrigemVenda origemVenda) {
+        return switch (origemVenda) {
+            case CANTINA -> OrigemRecebimento.VENDA_CANTINA;
+            case BAZAR -> OrigemRecebimento.TRANSFERENCIA_BAZAR;
+            case LIVROS -> OrigemRecebimento.VENDA_PRODUTOS;
+        };
+    }
+
+    /**
+     * Atualiza saldo da conta bancária após criar recebimento.
+     * US-067: Integração Automática de Vendas com Contas Bancárias
+     */
+    private void atualizarSaldoConta(UUID contaBancariaId, BigDecimal valor) {
+        ContaBancaria conta = contaBancariaRepository.findById(contaBancariaId)
+            .orElseThrow(() -> new NotFoundException("Conta bancária não encontrada"));
+
+        BigDecimal novoSaldo = conta.getSaldoAtual().add(valor);
+        conta.setSaldoAtual(novoSaldo);
+        contaBancariaRepository.save(conta);
     }
     
     @Override
@@ -168,6 +299,8 @@ public class VendaUseCaseImpl implements VendaUseCase {
                 .valor(venda.getValor())
                 .origem(venda.getOrigem())
                 .formaPagamento(venda.getFormaPagamento())
+                .contaBancariaId(venda.getContaBancariaId())
+                .recebimentoId(venda.getRecebimentoId())
                 .dataVenda(venda.getDataVenda())
                 .criadoEm(venda.getCriadoEm())
                 .atualizadoEm(venda.getAtualizadoEm())
