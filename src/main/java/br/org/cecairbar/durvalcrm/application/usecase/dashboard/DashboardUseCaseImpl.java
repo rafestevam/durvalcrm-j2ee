@@ -112,11 +112,6 @@ public class DashboardUseCaseImpl implements DashboardUseCase {
             // Associados sem mensalidade para o período não aparecem em nenhuma lista
         });
 
-        // Paginação: limitar inadimplentes a 10 registros
-        List<AssociadoResumoDTO> inadimplentesPaginados = inadimplentes.stream()
-            .limit(10)
-            .toList();
-        
         return DashboardDTO.builder()
             .receitaConsolidada(receitaConsolidada)
             .receitaMensalidades(receitaMensalidades != null ? receitaMensalidades : BigDecimal.ZERO)
@@ -127,7 +122,7 @@ public class DashboardUseCaseImpl implements DashboardUseCase {
             .pagantesMes(pagantesMes)
             .totalAssociados(totalAssociados)
             .adimplentes(adimplentes)
-            .inadimplentes(inadimplentesPaginados)
+            .inadimplentes(inadimplentes)
             .build();
     }
     
