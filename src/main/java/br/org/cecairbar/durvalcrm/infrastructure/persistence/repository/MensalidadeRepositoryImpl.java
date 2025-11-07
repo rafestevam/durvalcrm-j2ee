@@ -30,8 +30,17 @@ public class MensalidadeRepositoryImpl implements MensalidadeRepository {
             // Para atualizações: buscar entidade existente e atualizar campos
             MensalidadeEntity existingEntity = entityManager.find(MensalidadeEntity.class, mensalidade.getId());
             if (existingEntity != null) {
+                System.out.println("[REPO] Atualizando mensalidade ID: " + mensalidade.getId());
+                System.out.println("[REPO] Status antes: " + existingEntity.status);
+                System.out.println("[REPO] Status novo: " + mensalidade.getStatus());
+
                 // Atualizar campos da entidade existente
                 existingEntity.updateFromDomain(mensalidade);
+
+                // Force JPA to persist changes by explicitly merging
+                entityManager.merge(existingEntity);
+
+                System.out.println("[REPO] Status após updateFromDomain e merge: " + existingEntity.status);
             } else {
                 // ID não existe na base, tratar como nova entidade
                 MensalidadeEntity newEntity = MensalidadeEntity.fromDomain(mensalidade);

@@ -5,6 +5,7 @@ import br.org.cecairbar.durvalcrm.domain.model.FormaPagamento;
 import br.org.cecairbar.durvalcrm.domain.repository.MensalidadeRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 
@@ -16,6 +17,9 @@ public class MarcarMensalidadeComoPagaUseCaseImpl implements MarcarMensalidadeCo
 
     @Inject
     MensalidadeRepository mensalidadeRepository;
+
+    @Inject
+    EntityManager entityManager;
 
     @Override
     @Transactional
@@ -34,10 +38,15 @@ public class MarcarMensalidadeComoPagaUseCaseImpl implements MarcarMensalidadeCo
         mensalidade.marcarComoPaga(dataPagamento);
         
         System.out.println("Status após marcar como paga: " + mensalidade.getStatus());
-        
+
         mensalidadeRepository.save(mensalidade);
-        
-        System.out.println("Mensalidade atualizada no banco de dados");
+
+        // Forçar gravação imediata no banco e limpar cache do JPA
+        // Isso garante que consultas subsequentes vejam os dados atualizados
+        entityManager.flush();
+        entityManager.clear();
+
+        System.out.println("Mensalidade atualizada no banco de dados (flush e clear executados)");
     }
 
     @Override
@@ -57,9 +66,14 @@ public class MarcarMensalidadeComoPagaUseCaseImpl implements MarcarMensalidadeCo
         mensalidade.marcarComoPaga(dataPagamento, metodoPagamento);
         
         System.out.println("Status após marcar como paga: " + mensalidade.getStatus() + " - Método: " + metodoPagamento);
-        
+
         mensalidadeRepository.save(mensalidade);
-        
-        System.out.println("Mensalidade atualizada no banco de dados com método de pagamento");
+
+        // Forçar gravação imediata no banco e limpar cache do JPA
+        // Isso garante que consultas subsequentes vejam os dados atualizados
+        entityManager.flush();
+        entityManager.clear();
+
+        System.out.println("Mensalidade atualizada no banco de dados com método de pagamento (flush e clear executados)");
     }
 }

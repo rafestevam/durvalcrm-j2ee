@@ -42,6 +42,9 @@ public class DashboardUseCaseImpl implements DashboardUseCase {
     
     @Override
     public DashboardDTO obterDashboard(int mes, int ano) {
+        // Clear EntityManager cache to ensure fresh data from database
+        entityManager.clear();
+
         // Definir período
         YearMonth mesAno = YearMonth.of(ano, mes);
         LocalDate dataInicio = mesAno.atDay(1);
@@ -68,13 +71,27 @@ public class DashboardUseCaseImpl implements DashboardUseCase {
         // Obter estatísticas de associados
         Long totalAssociados = associadoRepository.count();
         List<String> associadosComMensalidadePaga = mensalidadeRepository.obterAssociadosComStatusPorPeriodo(mes, ano, StatusMensalidade.PAGA);
-        List<String> associadosComMensalidadesVencidas = mensalidadeRepository.obterAssociadosComMensalidadesVencidas(mes, ano);
+
+        // MUDANÇA DE LÓGICA: Todos com mensalidade PENDENTE são inadimplentes (não importa vencimento)
+        List<String> associadosComMensalidadesPendentes = mensalidadeRepository.obterAssociadosComStatusPorPeriodo(mes, ano, StatusMensalidade.PENDENTE);
+        List<String> associadosComMensalidadesAtrasadas = mensalidadeRepository.obterAssociadosComStatusPorPeriodo(mes, ano, StatusMensalidade.ATRASADA);
+
         Long pagantesMes = (long) associadosComMensalidadePaga.size();
-        
+
+        // DEBUG: Log query results
+        System.out.println("=== DASHBOARD DEBUG ===");
+        System.out.println("Período: " + mes + "/" + ano);
+        System.out.println("Total associados: " + totalAssociados);
+        System.out.println("Associados com mensalidade PAGA (count): " + associadosComMensalidadePaga.size());
+        System.out.println("IDs com mensalidade PAGA: " + associadosComMensalidadePaga);
+        System.out.println("Associados com mensalidade PENDENTE (count): " + associadosComMensalidadesPendentes.size());
+        System.out.println("Associados com mensalidade ATRASADA (count): " + associadosComMensalidadesAtrasadas.size());
+        System.out.println("======================");
+
         // Obter lista de adimplentes e inadimplentes
         List<AssociadoResumoDTO> adimplentes = new ArrayList<>();
         List<AssociadoResumoDTO> inadimplentes = new ArrayList<>();
-        
+
         associadoRepository.findAll().forEach(associado -> {
             String associadoId = associado.getId().toString();
             AssociadoResumoDTO resumo = AssociadoResumoDTO.builder()
@@ -83,16 +100,22 @@ public class DashboardUseCaseImpl implements DashboardUseCase {
                 .email(associado.getEmail())
                 .cpf(associado.getCpf())
                 .build();
-            
+
             if (associadosComMensalidadePaga.contains(associadoId)) {
                 // Associado com mensalidade paga = adimplente
                 adimplentes.add(resumo);
-            } else if (associadosComMensalidadesVencidas.contains(associadoId)) {
-                // Associado com mensalidade vencida (PENDENTE ou ATRASADA e vencida) = inadimplente
+            } else if (associadosComMensalidadesPendentes.contains(associadoId) ||
+                       associadosComMensalidadesAtrasadas.contains(associadoId)) {
+                // Associado com mensalidade PENDENTE ou ATRASADA = inadimplente
                 inadimplentes.add(resumo);
             }
             // Associados sem mensalidade para o período não aparecem em nenhuma lista
         });
+
+        // Paginação: limitar inadimplentes a 10 registros
+        List<AssociadoResumoDTO> inadimplentesPaginados = inadimplentes.stream()
+            .limit(10)
+            .toList();
         
         return DashboardDTO.builder()
             .receitaConsolidada(receitaConsolidada)
@@ -104,7 +127,7 @@ public class DashboardUseCaseImpl implements DashboardUseCase {
             .pagantesMes(pagantesMes)
             .totalAssociados(totalAssociados)
             .adimplentes(adimplentes)
-            .inadimplentes(inadimplentes)
+            .inadimplentes(inadimplentesPaginados)
             .build();
     }
     
