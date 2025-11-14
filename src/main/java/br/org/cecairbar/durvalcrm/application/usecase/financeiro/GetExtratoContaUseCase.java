@@ -46,6 +46,16 @@ public class GetExtratoContaUseCase {
                 .sorted(Comparator.comparing(Recebimento::getDataRecebimento))
                 .collect(Collectors.toList());
 
+        // Debug logging
+        System.out.println("[EXTRATO DEBUG] Conta: " + contaId);
+        System.out.println("[EXTRATO DEBUG] Período: " + periodoInicio + " até " + periodoFim);
+        System.out.println("[EXTRATO DEBUG] Total recebimentos na conta: " + todosRecebimentos.size());
+        System.out.println("[EXTRATO DEBUG] Recebimentos no período: " + recebimentosPeriodo.size());
+        if (!todosRecebimentos.isEmpty()) {
+            System.out.println("[EXTRATO DEBUG] Primeira data de recebimento: " + todosRecebimentos.get(0).getDataRecebimento());
+            System.out.println("[EXTRATO DEBUG] Última data de recebimento: " + todosRecebimentos.get(todosRecebimentos.size() - 1).getDataRecebimento());
+        }
+
         // Calculate opening balance (before period)
         BigDecimal saldoInicial = calcularSaldoInicial(todosRecebimentos, periodoInicio, conta.getSaldoInicial());
 

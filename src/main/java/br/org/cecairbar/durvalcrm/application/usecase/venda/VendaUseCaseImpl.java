@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
 
@@ -66,7 +67,7 @@ public class VendaUseCaseImpl implements VendaUseCase {
 
         // 4. Criar recebimento vinculado à venda
         Recebimento recebimento = criarRecebimentoParaVenda(venda);
-        recebimentoRepository.save(recebimento);
+        recebimento = recebimentoRepository.save(recebimento); // Capture returned object with generated ID
 
         // 5. Vincular recebimento à venda
         venda.setRecebimentoId(recebimento.getId());
@@ -98,8 +99,12 @@ public class VendaUseCaseImpl implements VendaUseCase {
             );
         }
 
-        // Retornar a primeira conta encontrada (pode ser melhorado com lógica de priorização)
-        return contas.get(0).getId();
+        // Retornar a conta mais recente (ordenar por data de criação descendente)
+        return contas.stream()
+            .sorted(Comparator.comparing(ContaBancaria::getCreatedAt).reversed())
+            .findFirst()
+            .orElseThrow(() -> new BadRequestException("Nenhuma conta encontrada"))
+            .getId();
     }
 
     /**
@@ -123,11 +128,15 @@ public class VendaUseCaseImpl implements VendaUseCase {
         Recebimento recebimento = new Recebimento();
         // ID será gerado automaticamente pelo JPA após persist()
 
-        // Converter Instant para LocalDate
-        LocalDate dataRecebimento = venda.getDataVenda()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate();
+        // Usar data atual do servidor (mais consistente que conversão com timezone)
+        // Isso garante que a data seja sempre a mesma independente do timezone
+        LocalDate dataRecebimento = LocalDate.now();
         recebimento.setDataRecebimento(dataRecebimento);
+
+        // Log para debug
+        System.out.println("[VENDA DEBUG] Criando recebimento para venda: " + venda.getId());
+        System.out.println("[VENDA DEBUG] Data do recebimento: " + dataRecebimento);
+        System.out.println("[VENDA DEBUG] Conta bancária: " + venda.getContaBancariaId());
 
         recebimento.setValor(venda.getValor());
 
